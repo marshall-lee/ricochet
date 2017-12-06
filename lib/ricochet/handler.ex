@@ -62,13 +62,15 @@ defmodule Ricochet.Handler do
   def info({:gun_response, _conn, stream, is_fin, status, headers}, req, state) do
     stream_info = state.streams[stream]
     Logger.debug "#{format_stream(stream_info)} - response_status=#{status} response_headers=#{inspect headers}"
+    is_success = status >= 200 && status < 300
+    is_last_stream = Enum.count(state.streams) == 1
     {is_redirected, state} = try_redirect(state, status, headers)
     {state, req} =
       cond do
         is_redirected ->
           IO.puts "redirecting..."
           {state, req}
-        !state.main_stream ->
+      !state.main_stream && (is_success || is_last_stream) ->
           cowboy_headers = headers
                         |> Enum.group_by(fn {x,_} -> x end, fn {_,y} -> y end)
           stream_info = state.streams[stream]
